@@ -1,0 +1,25 @@
+# Course environment: CPU only. Pins marked (!) are known constraints. Pin the rest after the first full dry-run on a Mac.
+name: fastml
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - jupyterlab
+  - ipywidgets
+  - pip
+  - pip:
+      - torch --index-url https://download.pytorch.org/whl/cpu   # Linux/Windows; on macOS plain `torch` from PyPI
+      - brevitas>=0.13
+      - onnx
+      - onnxruntime
+      - onnxoptimizer            # required by Brevitas' QONNX export
+      - qonnx>=1.0
+      - hls4ml==1.3.0            # (!) tested 2026-11-05
+      - quantizers<2             # (!) hls4ml 1.3.0 breaks with quantizers 2.0
+      - h5py
+# Also needed for hls4ml's C++ emulation (Lab 4, capstone FPGA teams): a C++ compiler.
+#   macOS: xcode-select --install     Windows: use WSL (Ubuntu) for the whole course
