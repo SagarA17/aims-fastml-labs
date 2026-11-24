@@ -23,6 +23,7 @@ New material appears here as the course goes on. **Everything runs in Google Col
 | Lab | Open |
 |---|---|
 | Lab 1: profiling and rooflines (Day 2) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/lab01_profiling/lab01.ipynb) |
+| **A1: predict, then measure** (due Fri 27 Nov, 22:00) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/A1_budgets/A1.ipynb) |
 
 | Folder | What |
 |---|---|
