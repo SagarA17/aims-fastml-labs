@@ -4,5 +4,7 @@
 __pycache__/
 data/
 hls_prj*/
+hls_scan*/
 my_models/
 onnx/
+my_results/

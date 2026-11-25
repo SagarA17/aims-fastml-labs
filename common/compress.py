@@ -1,7 +1,7 @@
-"""Shared helpers for compression work (A2, Lab 4, capstone). These are tools, not exercises.
+"""Shared helpers for compression work (Lab 2, A2, Lab 3, capstone). These are tools, not exercises.
 
 Quantized models use power-of-two ("FixedPoint") quantizers for weights, activations AND biases. That is exactly what maps onto
-hls4ml's ap_fixed types, so any model built with `qat_mlp` can be converted to an FPGA design bit-exactly (Lab 4).
+hls4ml's ap_fixed types, so any model built with `qat_mlp` can be converted to an FPGA design bit-exactly (Lab 3).
 """
 import copy, math
 import numpy as np
@@ -113,3 +113,42 @@ def snapshot(model):
     with torch.no_grad():
         model.eval()(torch.zeros(1, linears(model)[0].in_features))
     return copy.deepcopy(model)
+
+
+# ---------- Lab 2 tools: quantize by choosing bits, never by writing a quantizer ----------
+def ptq(model, cfg, calib_X, sizes=SIZES, batch=2000):
+    """Post-training quantization with Brevitas. Copies a trained float `mlp(sizes)` into `qat_mlp(cfg, sizes)` and calibrates
+    the activation ranges on `calib_X`. cfg[i] = (w_bits, a_bits) for Linear layer i. The result converts to hls4ml bit-exactly."""
+    from brevitas.graph.calibrate import calibration_mode
+    q = qat_mlp(cfg, sizes)
+    with torch.no_grad():
+        for src, dst in zip(linears(model), [m for m in q.modules() if m.__class__.__name__ == "QuantLinear"]):
+            dst.weight.copy_(src.weight); dst.bias.copy_(src.bias)
+        q.eval()
+        with calibration_mode(q):
+            for i in range(0, len(calib_X), batch):
+                q(calib_X[i:i + batch])
+    return q.eval()
+
+
+def bops(cfg, sizes=SIZES, sparsity=None):
+    """Bit operations, a hardware-cost proxy: sum over layers of (1 - sparsity) * MACs * w_bits * a_bits (None = 32 bits)."""
+    sparsity = sparsity or [0.0] * len(cfg)
+    macs = [a * b for a, b in zip(sizes[:-1], sizes[1:])]
+    return sum((1 - s) * m * (wb or 32) * (ab or 32) for m, (wb, ab), s in zip(macs, cfg, sparsity))
+
+
+def per_class_accuracy(model, X, y, n_classes=5):
+    pred = logits(model, X).argmax(1)
+    return [float((pred[y == k] == k).float().mean()) for k in range(n_classes)]
+
+
+def confusion(model, X, y, n_classes=5):
+    """Row-normalised confusion matrix: entry [i, j] = fraction of true class i predicted as class j."""
+    pred = logits(model, X).argmax(1).numpy(); y = np.asarray(y)
+    M = np.zeros((n_classes, n_classes))
+    for i in range(n_classes):
+        sel = y == i
+        if sel.any():
+            M[i] = np.bincount(pred[sel], minlength=n_classes) / sel.sum()
+    return M
