@@ -38,21 +38,24 @@ def qat_mlp(cfg, sizes=SIZES):
     return nn.Sequential(*layers)
 
 
-def train(model, X, y, epochs=4, bs=1024, lr=3e-3, loss_fn=None, seed=None):
-    """Adam + cosine schedule. loss_fn(logits, idx) overrides cross-entropy (idx = batch indices into X)."""
+def train(model, X, y, epochs=4, bs=1024, lr=3e-3, loss_fn=None, seed=None, device=None):
+    """Adam + cosine schedule. loss_fn(logits, idx) overrides cross-entropy (idx = batch indices into X).
+    device="cuda" trains on the GPU (the model comes back on the CPU, ready for scoring); the default trains on the CPU."""
     if seed is not None:
         torch.manual_seed(seed)
+    if device is not None:
+        model.to(device); X, y = X.to(device), y.to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs * math.ceil(len(X) / bs))
     model.train()
     for _ in range(epochs):
-        perm = torch.randperm(len(X))
+        perm = torch.randperm(len(X), device=X.device)
         for i in range(0, len(X), bs):
             j = perm[i:i + bs]
             out = model(X[j])
             loss = F.cross_entropy(out, y[j]) if loss_fn is None else loss_fn(out, j)
             opt.zero_grad(); loss.backward(); opt.step(); sched.step()
-    return model.eval()
+    return model.cpu().eval() if device is not None else model.eval()
 
 
 @torch.inference_mode()

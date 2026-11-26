@@ -8,3 +8,4 @@ hls_scan*/
 my_models/
 onnx/
 my_results/
+!capstone/data/

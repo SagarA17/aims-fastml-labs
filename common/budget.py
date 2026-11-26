@@ -29,25 +29,58 @@ def _layer_macs(m, out):
     return 0
 
 
+def _is_brevitas_layer(m):
+    return type(m).__module__.startswith("brevitas.nn")
+
+
+def _units(model):
+    """The modules to profile: leaf modules, except that a Brevitas layer (QuantLinear, QuantReLU, ...) counts as ONE unit and its internal
+    quantizer modules are skipped (they see weights or nothing, not activations)."""
+    out = []
+    def visit(m):
+        if _is_brevitas_layer(m) or len(list(m.children())) == 0:
+            out.append(m)
+        else:
+            for c in m.children():
+                visit(c)
+    visit(model)
+    return out
+
+
+def _unit_params(m):
+    if _is_brevitas_layer(m):      # only the layer's own weight and bias, not its quantizers' scale parameters
+        return sum(getattr(m, n).numel() for n in ("weight", "bias") if isinstance(getattr(m, n, None), torch.Tensor))
+    return sum(p.numel() for p in m.parameters(recurse=False))
+
+
+def _tensor(t):
+    t = t[0] if isinstance(t, (tuple, list)) and len(t) else t
+    t = getattr(t, "value", t)      # Brevitas QuantTensor -> plain tensor
+    return t if isinstance(t, torch.Tensor) else None
+
+
 def profile(model, input_shape, bytes_per_weight=1, bytes_per_act=1, extra_macs=0, extra_act_bytes=0):
-    """Profile ONE sample. input_shape excludes the batch dimension. Returns a dict, including a per-layer list."""
+    """Profile ONE sample. input_shape excludes the batch dimension. Works for plain PyTorch and Brevitas (quantized) models.
+    Returns a dict, including a per-layer list."""
     rows = []
 
     def hook(m, inp, out):
-        x = inp[0] if isinstance(inp, tuple) else inp
-        o = out[0] if isinstance(out, tuple) else out
+        x, o = _tensor(inp), _tensor(out)
+        if x is None or o is None:
+            return
         rows.append(dict(layer=m.__class__.__name__, out_shape=tuple(o.shape[1:]), macs=_layer_macs(m, o[0:1]) if o.dim() > 0 else 0,
-                         params=sum(p.numel() for p in m.parameters(recurse=False)),
-                         act_bytes=(x[0:1].numel() + o[0:1].numel()) * bytes_per_act))
+                         params=_unit_params(m), act_bytes=(x[0:1].numel() + o[0:1].numel()) * bytes_per_act))
 
-    leaves = [m for m in model.modules() if len(list(m.children())) == 0]
-    hs = [m.register_forward_hook(hook) for m in leaves]
+    units = _units(model)
+    hs = [m.register_forward_hook(hook) for m in units]
     model.eval()
     with torch.no_grad():
         model(torch.zeros(1, *input_shape))
     for h in hs:
         h.remove()
-    params = sum(p.numel() for p in model.parameters())
+    inside = {id(d) for u in units for d in u.modules()}            # the units and everything inside them
+    containers = [m for m in model.modules() if id(m) not in inside]  # e.g. a model holding its own nn.Parameter (a class token)
+    params = sum(_unit_params(m) for m in units) + sum(p.numel() for m in containers for p in m.parameters(recurse=False))
     macs = sum(r["macs"] for r in rows) + extra_macs
     return dict(params=params, macs=int(macs), weight_bytes=int(params * bytes_per_weight),
                 peak_act_bytes=int(max(r["act_bytes"] for r in rows) + extra_act_bytes),
