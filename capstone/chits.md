@@ -29,7 +29,8 @@ Radio telescopes must flag radio-frequency interference (FM radio, TV, aircraft,
 **Data:** simulated observations of HERA, a radio telescope in South Africa's Karoo: each sample is one "waterfall", the signal of one pair of dishes as an image of frequency × time,
 with an exact mask of the interference. **Task:** per-pixel interference segmentation. **Metric:** AUPRC per pixel (F1 too).
 **Why real time:** HERA flags its data after each night of observing. The next generation of arrays (SKA-Low, under construction: 512 stations, ~131,000 pairs) produces far too much data to store,
-so interference must be flagged as the data arrive, before they are averaged and the raw data discarded. If one GPU must keep up with every pair, each 512 × 512 waterfall must be done in about 2 ms.
+so interference must be flagged as the data arrive, before they are averaged and the raw data discarded. With time steps of about 1 s, one 512-step waterfall covers ~8 minutes;
+if one GPU must keep up with all ~131,000 pairs, that is ~3.5 ms per waterfall, and the GPU has other work to do as well (calibration, averaging), so the budget is 2 ms.
 **Budget:** **batch 1** on Colab's T4, p99 latency ≤ **2 ms** per waterfall *including* the copies to and from the GPU, AUPRC ≥ **0.98**, GPU memory ≤ **1 GB**. No batching.
 **Baseline:** a small U-Net reaches AUPRC 0.99 at 4.5 ms p99, so it is accurate but too slow. A classical threshold flagger (provided) reaches AUPRC 0.45.
 **Read:** Kerrigan et al., *Optimizing sparse RFI prediction using deep learning* (2019); Mesarcik et al., *Learning to detect RFI without seeing it* (2022).
