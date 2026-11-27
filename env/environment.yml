@@ -24,7 +24,7 @@ dependencies:
       # capstone data loaders (tested 2026-11-25)
       - Pillow==13.0.0           # chit 4 (Karoo) and R1 (beans): JPEG decoding and resizing
       - pyarrow==26.0.1          # R1 (beans): reads the Hugging Face parquet files
-      - soundfile==0.14.0        # chit 5 (Kinyarwanda KWS): decodes the MSWC opus clips (only when rebuilding from the original source)
+      - soundfile==0.14.0        # chit 5 (HumBug): decodes the HumBugDB WAV clips (only when rebuilding from the original source)
       - wfdb==5.3.0              # chit 6 (MIT-BIH): reads the PhysioNet records (only when rebuilding from the original source)
 # Also needed for hls4ml's C++ emulation (Lab 4, capstone FPGA teams): a C++ compiler.
 #   macOS: xcode-select --install     Windows: use WSL (Ubuntu) for the whole course

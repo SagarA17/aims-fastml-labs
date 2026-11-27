@@ -26,6 +26,8 @@ New material appears here as the course goes on. **Everything runs in Google Col
 | **A1: predict, then measure** (due Fri 27 Nov, 22:00) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/A1_budgets/A1.ipynb) |
 | Lab 2: compressing a jet tagger (Day 4, both sessions) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/lab02_quantization/lab02.ipynb) |
 | **A2: let HGQ choose the bit widths (a W tagger at ~50k BOPs)** (due Mon 30 Nov, 22:00) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/A2_compression/A2.ipynb) |
+| **Capstone** (out Day 5, talks Day 10): start with `capstone/README.md`, then your chit in `capstone/chits.md` and its notebook in `capstone/baselines/` | [Browse the folder](https://github.com/SagarA17/aims-fastml-labs/tree/main/capstone) |
+| Lab 3 bridge: from Brevitas to hls4ml (for the capstone now; part of Lab 3 on Day 6) | [Open in Colab](https://colab.research.google.com/github/SagarA17/aims-fastml-labs/blob/main/lab03_hls4ml/lab03_bridge.ipynb) |
 
 | Folder | What |
 |---|---|

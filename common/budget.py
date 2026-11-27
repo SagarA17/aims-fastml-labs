@@ -9,13 +9,22 @@ Counting rules (the same as in lectures):
   * MACs: Linear = in × out; Conv1d/2d = out_elements × (in_channels / groups) × kernel_size; batched matmul (attention) is counted
     via `extra_macs` if you use torch.matmul directly. Biases, activations and pooling are ignored.
   * Weight bytes = params × bytes_per_weight (int8 → 1).
-  * Peak activation bytes: walking the leaf modules in execution order, the largest (input + output) tensor size of any layer. That's what must live in
-    SRAM at once for a sequential model running layer by layer. Skip connections keep extra tensors alive; add them by hand (`extra_act_bytes`).
+  * Peak activation bytes: walking the layers in execution order, the largest (input + output) tensor size of any layer. That's what must live in
+    SRAM at once for a sequential model running layer by layer. Element-wise layers (ReLU and other activations, batch norm, dropout, flatten, input quantizers)
+    work **in place** (or are merged into the layer before them when deployed), so they add nothing: the same convention as the Day 7 lecture.
+    Skip connections keep extra tensors alive; add them by hand (`extra_act_bytes`).
 """
 import torch
 import torch.nn as nn
 
 _COUNTED = (nn.Linear, nn.Conv1d, nn.Conv2d)
+_IN_PLACE = (nn.ReLU, nn.ReLU6, nn.LeakyReLU, nn.Sigmoid, nn.Tanh, nn.Hardtanh, nn.Hardswish, nn.SiLU, nn.GELU,
+             nn.BatchNorm1d, nn.BatchNorm2d, nn.Dropout, nn.Flatten, nn.Identity)
+_IN_PLACE_BREVITAS = ("QuantReLU", "QuantIdentity", "QuantHardTanh", "QuantSigmoid", "QuantTanh")
+
+
+def _in_place(m):
+    return isinstance(m, _IN_PLACE) or type(m).__name__ in _IN_PLACE_BREVITAS
 
 
 def _layer_macs(m, out):
@@ -69,7 +78,7 @@ def profile(model, input_shape, bytes_per_weight=1, bytes_per_act=1, extra_macs=
         if x is None or o is None:
             return
         rows.append(dict(layer=m.__class__.__name__, out_shape=tuple(o.shape[1:]), macs=_layer_macs(m, o[0:1]) if o.dim() > 0 else 0,
-                         params=_unit_params(m), act_bytes=(x[0:1].numel() + o[0:1].numel()) * bytes_per_act))
+                         params=_unit_params(m), act_bytes=0 if _in_place(m) else (x[0:1].numel() + o[0:1].numel()) * bytes_per_act))
 
     units = _units(model)
     hs = [m.register_forward_hook(hook) for m in units]
