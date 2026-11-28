@@ -2,6 +2,7 @@
 
     from capstone.data.mitbih import load, CLASSES, macro_f1
     X, y = load("train")          # X: (n, 1, 256) float32 in mV (lead MLII), y: (n,) int64 in 0..4 = CLASSES (N, S, V, F, Q)
+    r = records("train")          # (n,) int64: the record (patient) each beat comes from
 
 **Source.** MIT-BIH Arrhythmia Database v1.0.0 on PhysioNet, https://physionet.org/content/mitdb/1.0.0/ : 48 half-hour two-lead ECG recordings
 from 47 patients, 360 samples/s, every beat annotated by two cardiologists. **Licence:** **Open Data Commons Attribution License v1.0 (ODC-By 1.0)**.
@@ -13,7 +14,7 @@ Records 102 and 104 have no MLII lead (their pacemaker patients were recorded on
 end of a recording for a full window, and non-beat annotations (rhythm changes, noise, ...), are skipped.
 
 **Classes (AAMI EC57 grouping of the beat labels).** N normal & bundle-branch-block (N, L, R, e, j) · S supraventricular ectopic (A, a, J, S) ·
-V ventricular ectopic (V, E) · F fusion (F) · Q paced & unclassifiable (/, f, Q). The classes are very unbalanced (N is ~90%): that's why the metric is macro-F1.
+V ventricular ectopic (V, E) · F fusion (F) · Q paced & unclassifiable (/, f, Q). The classes are very unbalanced (N is ~85% of the beats in train and test, ~64% in val): that's why the metric is macro-F1.
 
 **Splits (fixed, patient-wise).** A wearable meets patients it was never trained on, so no patient is in two splits. We start from the standard
 inter-patient split of de Chazal et al. (IEEE TBME 2004): DS1 for training, DS2 for testing. Two changes: record 202 moves to DS1, because 201 and 202
@@ -89,6 +90,18 @@ def load(split="train", max_items=None):
     with np.load(fetch.get_npz(CHIT, NAME, KEYS, build)) as z:
         X, y = z[f"X_{split}"], z[f"y_{split}"].astype(np.int64)
     return fetch.take(split, (X, y), max_items)
+
+
+def records(split="train", max_items=None):
+    """The MIT-BIH record (recording) number of every beat, in the same order as `load(split, max_items)`. One record = one patient,
+    except records 201 and 202 (the same patient, both in train)."""
+    fetch.check(split)
+    if fetch.synthetic():
+        n = max_items or 10_000
+        return np.array(RECORDS[split], np.int64)[np.arange(n) * len(RECORDS[split]) // n]
+    with np.load(fetch.get_npz(CHIT, NAME, KEYS, build)) as z:
+        r = z[f"record_{split}"].astype(np.int64)
+    return fetch.take(split, (r,), max_items)[0]
 
 
 def macro_f1(y_true, y_pred):

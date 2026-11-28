@@ -16,8 +16,9 @@ You are graded on how well you **reason, predict and measure**, not on the final
 ## What you must do
 1. **Understand the budget** (🟥 AI-off). Turn the chit's requirement into numbers: operations per inference, memory, latency and deadline, and the arithmetic
    intensity you can afford. Where on the roofline (Day 1) or in the resource table (Day 5) does your target live?
-2. **Choose ≥ 3 candidate architectures and cost them *before* training.** Use `common/budget.py` and the Day 7 scaling laws, with at least one "simple" baseline
-   (e.g. an MLP, or a non-ML threshold) and at least one architecture that matches the data's structure (CNN, Deep Sets, …). Predict which fit.
+2. **On top of your chit's baseline, choose at least 2 candidate architectures of your own, and cost them *before* training.** At least one of them must match
+   the structure of your data (e.g. a CNN for images, spectrograms or waveforms). Count all of them (the baseline too) with `common/budget.py` and the Day 7 scaling laws,
+   and predict which fit. You are welcome to try more.
 3. **Train, compress, and map the trade-off front.** Quantization, pruning, distillation and width/depth: whatever fits your target. Plot your metric against cost
    (in the unit your target cares about: bytes, MACs, latency, or DSP/LUT).
 4. **Predict, then measure (or synthesize).** For your final 1–2 designs, write down the predicted cost, then measure it (CPU/GPU), count it (MCU/EDGE), or have it synthesized
@@ -29,7 +30,7 @@ You are graded on how well you **reason, predict and measure**, not on the final
 |---|---|
 | **Day 5**, end of lecture | Teams formed, chits drawn. Read your chit, `targets.md`, and the paper(s) on your chit card. |
 | **Day 6** | Lab 3 (hls4ml: the FPGA tools). Start the data loader and baseline. |
-| **Day 8** | **Checkpoint**: your budget in numbers + ≥ 3 candidates, each with counted cost and a predicted fit. |
+| **Day 8** | **Checkpoint**: your budget in numbers + the baseline and your ≥ 2 candidates, each with counted cost and a predicted fit. |
 | **Day 8** | FPGA teams: **synthesis round 1** (≤ 2 designs, via `make_submission`). |
 | **Day 9** | FPGA teams: **synthesis round 2** (≤ 2 designs). |
 | **Day 10** | Notebook due (executed, with outputs). |

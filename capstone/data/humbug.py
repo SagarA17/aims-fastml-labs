@@ -217,17 +217,20 @@ def load(split="train", max_items=None, labels="mosquito", step=None):
 
 def meta(split, max_items=None, step=None):
     """Per-window metadata in the same order as load(split, max_items, step=step): dict of arrays
-    clip_id (HumBugDB id), experiment (country / location type / place), test_set ("A", "B" or "" outside test), species (name or "none")."""
+    clip_id (HumBugDB id), experiment (country / location type / place), test_set ("A", "B" or "" outside test), species (name or "none"),
+    label (1 = mosquito, 0 = no mosquito, as in load(): handy for counting without loading the audio)."""
     fetch.check(split)
     if fetch.synthetic():
         n = max_items or 2_000
         test_set = np.where(np.arange(n) % 2, "B", "A") if split == "test" else np.array([""] * n)
-        return dict(clip_id=np.arange(n), experiment=np.array(["synthetic"] * n), test_set=test_set, species=np.array(["none"] * n))
+        label = np.random.default_rng({"train": 0, "val": 1, "test": 2}[split]).integers(0, 2, n)      # the same draw as load()
+        return dict(clip_id=np.arange(n), experiment=np.array(["synthetic"] * n), test_set=test_set, species=np.array(["none"] * n), label=label)
     starts, clip, clips, experiments = _index(split, step or WINDOW)
     _, clip = fetch.take(split, (starts, clip), max_items)
     exp = np.array(experiments)[clips["experiment"][clip]]
     test_set = np.array(["A" if e.startswith("Tanzania / field") else "B" if e.startswith("UK / culture") else "" for e in exp])
-    return dict(clip_id=clips["clip_id"][clip], experiment=exp, test_set=test_set, species=np.array(SPECIES)[clips["species"][clip]])
+    return dict(clip_id=clips["clip_id"][clip], experiment=exp, test_set=test_set, species=np.array(SPECIES)[clips["species"][clip]],
+                label=clips["label"][clip].astype(np.int64))
 
 
 def is_anopheles(species_index):

@@ -3,6 +3,7 @@
     from capstone.data.karoo import load, recall_at_empties_kept
     X, y = load("train")                          # X: (n, 3, 96, 96) uint8 RGB, y: (n,) int64, 1 = animal, 0 = empty
     X, y = load("train", grayscale=True, size=64) # (n, 1, 64, 64): colour and resolution are your levers
+    seq = sequences("train")                      # (n,) str: the burst (sequence) each image belongs to, e.g. "KAR_S1#B03#1#462" (camera site B03)
 
 **Source.** Snapshot Karoo, Season 1, part of Snapshot Safari, distributed by LILA BC: https://lila.science/datasets/snapshot-karoo
 (metadata `SnapshotKaroo_S1_v1.0.json`, images in the public bucket gs://public-datasets-lila/snapshot-safari/KAR/KAR_public).
@@ -152,6 +153,18 @@ def load(split="train", max_items=None, grayscale=False, size=SIZE):
     if grayscale:
         X = np.round(np.tensordot(np.array([0.299, 0.587, 0.114]), X.astype(np.float32), axes=([0], [1])))[:, None].astype(np.uint8)
     return np.ascontiguousarray(X), y
+
+
+def sequences(split="train", max_items=None):
+    """The sequence id of every image, in the same order as `load(split, max_items)`: "KAR_S1#<camera site>#<roll>#<number>".
+    Images with the same id were taken in one burst (1-3 shots, near-duplicates)."""
+    fetch.check(split)
+    if fetch.synthetic():
+        n = max_items or 2_000
+        return np.array([f"KAR_S1#S{(i // 3) % 5:02d}#1#{i // 3}" for i in range(n)])
+    with np.load(fetch.get_npz(CHIT, NAME, KEYS, build)) as z:
+        seq = z[f"seq_{split}"]
+    return fetch.take(split, (seq,), max_items)[0]
 
 
 def recall_at_empties_kept(score, y, kept=0.05):
